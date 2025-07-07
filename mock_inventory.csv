@@ -1,0 +1,21 @@
+Product,Category,StockQty,WeeklySales,ExpiryDate,StoreID,Weather,HolidayFlag
+Milk 1L,Dairy,120,40,2025-07-10,S01,Sunny,1
+Bread Loaf,Bakery,100,30,2025-07-09,S01,Rainy,0
+Yogurt Cup,Dairy,60,10,2025-07-08,S02,Sunny,0
+Orange Juice,Beverages,70,35,2025-07-15,S01,Cloudy,0
+Eggs 12pc,Dairy,90,25,2025-07-12,S02,Rainy,1
+Banana Dozen,Fruits,80,20,2025-07-07,S03,Hot,1
+Strawberry Pack,Fruits,40,5,2025-07-07,S01,Hot,0
+Cereal Box,Packaged,200,50,2025-12-01,S01,Sunny,0
+Soda Can,Beverages,300,70,2025-12-15,S01,Sunny,0
+Butter 500g,Dairy,150,45,2025-07-10,S03,Rainy,1
+Paneer 250g,Dairy,130,38,2025-07-09,S03,Cloudy,0
+Cake Slices,Bakery,60,15,2025-07-08,S02,Rainy,0
+Chips Packet,Snacks,400,60,2025-12-20,S01,Sunny,0
+Apple 1kg,Fruits,90,28,2025-07-11,S03,Cloudy,1
+Water Bottle 1L,Beverages,600,100,2025-12-25,S02,Sunny,0
+Chocolate Bar,Snacks,250,75,2025-12-05,S03,Sunny,0
+Croissant,Bakery,50,12,2025-07-09,S01,Cloudy,0
+Cheese Slices,Dairy,80,22,2025-07-11,S03,Rainy,1
+Tomato Ketchup,Condiments,180,55,2025-11-10,S01,Sunny,0
+Jam Bottle,Condiments,170,33,2025-11-01,S02,Cloudy,0
