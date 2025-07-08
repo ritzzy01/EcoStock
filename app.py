@@ -18,7 +18,7 @@ st.markdown("""
         }
         .stApp {
             background-color: #101010;
-        }
+        },
         h1, h2, h3 {
             color: #cccccc;
             margin-bottom: 0.3rem;
@@ -74,8 +74,24 @@ st.markdown("""
             padding-bottom: 1rem;
             margin-bottom: 1.2rem;
         }
+        button[kind="secondary"] {
+            background-color: #222 !important;
+            color: #eee !important;
+            border: 1px solid #444;
+            border-radius: 8px;
+            margin: 5px;
+        }
+        button[kind="secondary"]:hover {
+            background-color: #333 !important;
+            color: #fff !important;
+        }
+        
     </style>
+    
+
 """, unsafe_allow_html=True)
+
+
 
 # --------------------------- FUNCTION DEFINITIONS ---------------------------
 def load_data(uploaded_file):
@@ -112,21 +128,26 @@ def classify_risk(df):
     df['RiskLevel'] = np.select(conditions, choices, default='LOW')
     return df
 
+# --------------------------- NAVIGATION STATE ---------------------------
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "Home"
 
-# --------------------------- SIDEBAR ---------------------------
-with st.sidebar.expander("### 📥 Upload or Add Inventory"):
-    # Upload CSV
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
-    
-# --------------------------- MAIN APP ---------------------------
-st.markdown("<h1>🌿 EcoStock AI</h1>", unsafe_allow_html=True)
-st.markdown("##### Smart Inventory Optimization for Retail")
-st.markdown("---")
 
+# --------------------------- NAVBAR ---------------------------
+nav_items = ["Home", "Upload CSV File", "Add New Inventory", "Filter Inventory"]
+nav_icons = ["🏠", "📁", "➕", "🔍"]
+nav_cols = st.columns(len(nav_items))
+
+with st.container():
+    for i, col in enumerate(nav_cols):
+        with col:
+            if st.button(f"{nav_icons[i]} {nav_items[i]}", key=f"nav_{i}"):
+                st.session_state.active_page = nav_items[i]
 
 
 # --------------------------- LOAD + PROCESS DATA ---------------------------
-df = load_data(uploaded_file)
+
+df = load_data('mock_inventory.csv')
 if st.session_state.get("manual_data"):
     manual_df = pd.DataFrame(st.session_state.manual_data)
     manual_df['ExpiryDate'] = pd.to_datetime(manual_df['ExpiryDate'])
@@ -136,59 +157,200 @@ model = train_model(df)
 df = apply_predictions(df, model)
 df = classify_risk(df)
 
+# --------------------------- SIDEBAR DRAWER ---------------------------
+
+# if "show_drawer" not in st.session_state:
+#     st.session_state.show_drawer = True
+
+# st.toggle("☰", key="show_drawer", label_visibility="collapsed")
+
+# Only show sidebar on these pages
+show_sidebar_pages = {"Upload CSV File", "Add New Inventory", "Filter Inventory"}
+
+# Hide sidebar if not on those pages
+# if st.session_state.active_page not in show_sidebar_pages:
+#     st.markdown("""
+#         <style>
+#             [data-testid="stSidebar"] {
+#                 display: none;
+#             }
+#             [data-testid="collapsedControl"] {
+#                 display: none;
+#             }
+#         </style>
+#     """, unsafe_allow_html=True)
+# Show/hide sidebar with smooth transition
+if st.session_state.active_page not in show_sidebar_pages:
+    st.markdown("""
+        <style>
+        /* Hide sidebar smoothly */
+        [data-testid="stSidebar"] {
+            transition: all 0.75s ease-in-out;
+            transform: translateX(-100%);
+            opacity: 0;
+            width: 0 !important;
+        }
+
+        /* Expand main content to full width */
+        [data-testid="stAppViewContainer"] > .main {
+            margin-left: 0rem;
+            transition: margin-left 0.75s ease-in-out;
+        }
+
+        [data-testid="collapsedControl"] {
+            display: none;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+        /* Show sidebar smoothly */
+        [data-testid="stSidebar"] {
+            transition: all 0.75s ease-in-out;
+            transform: translateX(0%);
+            opacity: 1;
+            width: 18rem !important;
+        }
+
+        /* Push main content to make room for sidebar */
+        [data-testid="stAppViewContainer"] > .main {
+            margin-left: 18rem;
+            transition: margin-left 0.75s ease-in-out;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+
+
+
+
+# if st.session_state.show_drawer:
+with st.sidebar:
+    st.markdown(f"### {nav_icons[nav_items.index(st.session_state.active_page)]} {st.session_state.active_page}")
+
+    if st.session_state.active_page == "Upload CSV File":
+        uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+
+    elif st.session_state.active_page == "Add New Inventory":
+        with st.form("upload_form", clear_on_submit=True):
+            product = st.text_input("Product Name")
+            category = st.selectbox("Category", ["Dairy", "Bakery", "Beverages", "Fruits", "Packaged", "Snacks", "Condiments"])
+            stock_qty = st.number_input("Stock Quantity", min_value=0, step=1)
+            weekly_sales = st.number_input("Weekly Sales", min_value=0.0, step=1.0)
+            expiry_date = st.date_input("Expiry Date", min_value=datetime.today())
+            store_id = st.selectbox("Store ID", ["S01", "S02", "S03"])
+            weather = st.selectbox("Weather", ["Sunny", "Cloudy", "Rainy", "Hot"])
+            holiday_flag = st.selectbox("Holiday Flag", [0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+
+            submitted = st.form_submit_button("➕ Add Item")
+
+        if submitted:
+            expiry_date_str = expiry_date.strftime('%Y-%m-%d')  
+            new_entry = {
+                "Product": product,
+                "Category": category,
+                "StockQty": stock_qty,
+                "WeeklySales": weekly_sales,
+                "ExpiryDate": expiry_date,
+                "StoreID": store_id,
+                "Weather": weather,
+                "HolidayFlag": holiday_flag
+            }
+            CSV_FILE = "mock_inventory.csv"
+            try:
+                df_existing = pd.read_csv(CSV_FILE)
+            except FileNotFoundError:
+                df_existing = pd.DataFrame(columns=new_entry.keys())
+                df_updated = pd.concat([df_existing, pd.DataFrame([new_entry])], ignore_index=True)
+                df_updated.to_csv(CSV_FILE, index=False)
+                st.success(f"✅ Product '{product}' added successfully!")
+                st.rerun()
+
+    elif st.session_state.active_page == "Filter Inventory":
+        selected_category = st.multiselect(
+            "Select Category", 
+                options=df['Category'].unique(), 
+                default=df['Category'].unique()
+        )
+        st.session_state.selected_category = selected_category
+
+    else:
+        st.markdown("Welcome to **EcoStock AI**! Use the menu to get started.")
+
+
+# --------------------------- SIDEBAR ---------------------------
+# with st.sidebar.expander("### 📥 Upload or Add Inventory"):
+#     # Upload CSV
+#     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+    
+# --------------------------- MAIN APP ---------------------------
+st.markdown("<h1>🌿 EcoStock AI</h1>", unsafe_allow_html=True)
+st.markdown("##### Smart Inventory Optimization for Retail")
+st.markdown("---")
+
+
+
+
+
 
 
 # --------------------------- USER INPUT ---------------------------
-with st.sidebar.expander("### ✍️ Add New Product"):
+# with st.sidebar.expander("### ✍️ Add New Product"):
 
-    with st.form("upload_form", clear_on_submit=True):
-        product = st.text_input("Product Name")
-        category = st.selectbox("Category", ["Dairy", "Bakery", "Beverages", "Fruits", "Packaged", "Snacks", "Condiments"])
-        stock_qty = st.number_input("Stock Quantity", min_value=0, step=1)
-        weekly_sales = st.number_input("Weekly Sales", min_value=0.0, step=1.0)
-        expiry_date = st.date_input("Expiry Date", min_value=datetime.today())
-        store_id = st.selectbox("Store ID", ["S01", "S02", "S03"])
-        weather = st.selectbox("Weather", ["Sunny", "Cloudy", "Rainy", "Hot"])
-        holiday_flag = st.selectbox("Holiday Flag", [0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+#     with st.form("upload_form", clear_on_submit=True):
+#         product = st.text_input("Product Name")
+#         category = st.selectbox("Category", ["Dairy", "Bakery", "Beverages", "Fruits", "Packaged", "Snacks", "Condiments"])
+#         stock_qty = st.number_input("Stock Quantity", min_value=0, step=1)
+#         weekly_sales = st.number_input("Weekly Sales", min_value=0.0, step=1.0)
+#         expiry_date = st.date_input("Expiry Date", min_value=datetime.today())
+#         store_id = st.selectbox("Store ID", ["S01", "S02", "S03"])
+#         weather = st.selectbox("Weather", ["Sunny", "Cloudy", "Rainy", "Hot"])
+#         holiday_flag = st.selectbox("Holiday Flag", [0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
 
-        submitted = st.form_submit_button("➕ Add Item")
+#         submitted = st.form_submit_button("➕ Add Item")
 
-    if submitted:
-        expiry_date_str = expiry_date.strftime('%Y-%m-%d')  
-        new_entry = {
-            "Product": product,
-            "Category": category,
-            "StockQty": stock_qty,
-            "WeeklySales": weekly_sales,
-            "ExpiryDate": expiry_date,  # Ensure it's datetime object
-            "StoreID": store_id,
-            "Weather": weather,
-            "HolidayFlag": holiday_flag
-        }
-        CSV_FILE="mock_inventory.csv"
-        try:
-            df_existing = pd.read_csv(CSV_FILE)
-        except FileNotFoundError:
-            df_existing = pd.DataFrame(columns=new_entry.keys())
+#     if submitted:
+#         expiry_date_str = expiry_date.strftime('%Y-%m-%d')  
+#         new_entry = {
+#             "Product": product,
+#             "Category": category,
+#             "StockQty": stock_qty,
+#             "WeeklySales": weekly_sales,
+#             "ExpiryDate": expiry_date,  # Ensure it's datetime object
+#             "StoreID": store_id,
+#             "Weather": weather,
+#             "HolidayFlag": holiday_flag
+#         }
+#         CSV_FILE="mock_inventory.csv"
+#         try:
+#             df_existing = pd.read_csv(CSV_FILE)
+#         except FileNotFoundError:
+#             df_existing = pd.DataFrame(columns=new_entry.keys())
 
-        # Append new row
-        df_updated = pd.concat([df_existing, pd.DataFrame([new_entry])], ignore_index=True)
+#         # Append new row
+#         df_updated = pd.concat([df_existing, pd.DataFrame([new_entry])], ignore_index=True)
 
-        # Save back to CSV without time component
-        df_updated.to_csv(CSV_FILE, index=False)
+#         # Save back to CSV without time component
+#         df_updated.to_csv(CSV_FILE, index=False)
         
-        st.success(f"✅ Product '{product}' added successfully!")
-        st.rerun()
+#         st.success(f"✅ Product '{product}' added successfully!")
+#         st.rerun()
     
 # --------------------------- CATEGORY FILTER ---------------------------
-with st.sidebar.expander("### 🔍 Filter Inventory"):
-    selected_category = None  # To be set after loading
-    selected_category = st.multiselect("Select Category", options=df['Category'].unique(), default=df['Category'].unique())
+# with st.sidebar.expander("### 🔍 Filter Inventory"):
+#     selected_category = None  # To be set after loading
+#     selected_category = st.multiselect("Select Category", options=df['Category'].unique(), default=df['Category'].unique())
 
-filtered_df = df[df['Category'].isin(selected_category)].reset_index(drop=True) if selected_category else df
+# filtered_df = df[df['Category'].isin(selected_category)].reset_index(drop=True) if selected_category else df
+# at_risk = filtered_df[filtered_df['RiskLevel'].isin(['HIGH', 'MEDIUM'])].reset_index(drop=True)
+# at_risk = at_risk.sort_values(by=['RiskLevel', 'DaysToExpire'])
+
+# Use selected category from sidebar for filtering
+selected_category = st.session_state.get("selected_category", df['Category'].unique())
+filtered_df = df[df['Category'].isin(selected_category)].reset_index(drop=True)
 at_risk = filtered_df[filtered_df['RiskLevel'].isin(['HIGH', 'MEDIUM'])].reset_index(drop=True)
 at_risk = at_risk.sort_values(by=['RiskLevel', 'DaysToExpire'])
-
 
 # --------------------------- KPIs ---------------------------
 col1, col2, col3 = st.columns(3)
