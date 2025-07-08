@@ -6,6 +6,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+import plotly.express as px
 
 # --------------------------- PAGE CONFIG & STYLE ---------------------------
 st.set_page_config(page_title="EcoStock AI", layout="wide")
@@ -73,9 +74,7 @@ def classify_risk(df):
     df['RiskLevel'] = np.select(conditions, choices, default='LOW')
     return df
 # --------------------------- SIDEBAR ---------------------------
-with st.sidebar:
-    st.markdown("### 📥 Upload or Add Inventory")
-
+with st.sidebar.expander("### 📥 Upload or Add Inventory"):
     # Upload CSV
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
     
@@ -99,8 +98,7 @@ df = apply_predictions(df, model)
 df = classify_risk(df)
 
 # --------------------------- USER INPUT ---------------------------
-with st.sidebar:
-    st.markdown("### ✍️ Add New Product")
+with st.sidebar.expander("### ✍️ Add New Product"):
 
     with st.form("inventory_form", clear_on_submit=True):
         product = st.text_input("Product Name")
@@ -142,8 +140,7 @@ with st.sidebar:
         st.rerun()
     
 # --------------------------- CATEGORY FILTER ---------------------------
-with st.sidebar:
-    st.markdown("### 🔍 Filter Inventory")
+with st.sidebar.expander("### 🔍 Filter Inventory"):
     selected_category = None  # To be set after loading
     selected_category = st.multiselect("Select Category", options=df['Category'].unique(), default=df['Category'].unique())
 
@@ -172,7 +169,17 @@ if "show_delete" not in st.session_state:
     st.session_state.show_delete = False
 if "selected_delete_idx" not in st.session_state:
     st.session_state.selected_delete_idx = None
-_, _, col_del = st.columns([8, 2, 1])
+_, col_export, col_del = st.columns([8, 2, 1])
+with col_export:
+    csv = filtered_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📤 Export CSV",
+        data=csv,
+        file_name="filtered_inventory.csv",
+        mime='text/csv',
+        key="export_button"
+    )
+
 with col_del:
     # st.session_state.show_delete = st.button("🗑️", key="delete_button", help="Delete a product")
     if st.button("🗑️", key="delete_button", help="Delete a product"):
@@ -268,14 +275,39 @@ else:
 
 
 # --------------------------- CHARTS ---------------------------
+
 col4, col5 = st.columns(2)
+
 with col4:
     st.markdown("### 📊 Weekly Sales vs Predicted Demand")
-    st.bar_chart(filtered_df[['Product', 'WeeklySales', 'PredictedDemand']].set_index('Product'))
+    sales_fig = px.bar(
+        filtered_df,
+        x="Product",
+        y=["WeeklySales", "PredictedDemand"],
+        barmode="group",
+        title="Weekly Sales vs Predicted Demand",
+        color_discrete_map={"WeeklySales": "#636EFA", "PredictedDemand": "#EF553B"}
+    )
+    st.plotly_chart(sales_fig, use_container_width=True)
 
 with col5:
     st.markdown("### 📈 Risk Distribution")
-    st.bar_chart(filtered_df['RiskLevel'].value_counts())
+    risk_count = filtered_df['RiskLevel'].value_counts().reset_index()
+    risk_count.columns = ['RiskLevel', 'Count']
+    risk_fig = px.bar(
+        risk_count,
+        x="RiskLevel",
+        y="Count",
+        color="RiskLevel",
+        title="Risk Level Distribution",
+        color_discrete_map={
+            "HIGH": "#e76f51",
+            "MEDIUM": "#f4a261",
+            "LOW": "#2a9d8f"
+        }
+    )
+    st.plotly_chart(risk_fig, use_container_width=True)
+
 
 # --------------------------- FOOTER ---------------------------
 st.markdown("<div class='footer'>Built by <b>Ritika & Nikhil</b> for Walmart Sparkathon 2025 💡<br>GitHub: <a href='https://github.com/Nikhil020Yadav/EcoStock' style='color: #888;' target='_blank'>EcoStock</a></div>", unsafe_allow_html=True)
