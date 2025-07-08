@@ -117,46 +117,7 @@ def classify_risk(df):
 with st.sidebar.expander("### 📥 Upload or Add Inventory"):
     # Upload CSV
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='sidebar-section'><div class='sidebar-title'>✍️ Add New Product</div>", unsafe_allow_html=True)
-    with st.form("inventory_form", clear_on_submit=True):
-        product = st.text_input("Product Name")
-        category = st.selectbox("Category", ["Dairy", "Bakery", "Beverages", "Fruits", "Packaged", "Snacks", "Condiments"])
-        stock_qty = st.number_input("Stock Quantity", min_value=0, step=1)
-        weekly_sales = st.number_input("Weekly Sales", min_value=0.0, step=1.0)
-        expiry_date = st.date_input("Expiry Date", min_value=datetime.today())
-        store_id = st.selectbox("Store ID", ["S01", "S02", "S03"])
-        weather = st.selectbox("Weather", ["Sunny", "Cloudy", "Rainy", "Hot"])
-        holiday_flag = st.selectbox("Holiday Flag", [0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
-        submitted = st.form_submit_button("➕ Add Item")
-
-    if submitted:
-        new_entry = {
-            "Product": product,
-            "Category": category,
-            "StockQty": stock_qty,
-            "WeeklySales": weekly_sales,
-            "ExpiryDate": expiry_date,
-            "StoreID": store_id,
-            "Weather": weather,
-            "HolidayFlag": holiday_flag
-        }
-        CSV_FILE="mock_inventory.csv"
-        try:
-            df_existing = pd.read_csv(CSV_FILE)
-        except FileNotFoundError:
-            df_existing = pd.DataFrame(columns=new_entry.keys())
-        df_updated = pd.concat([df_existing, pd.DataFrame([new_entry])], ignore_index=True)
-        df_updated.to_csv(CSV_FILE, index=False)
-        st.success(f"✅ Product '{product}' added successfully!")
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='sidebar-section'><div class='sidebar-title'>🔍 Filter Inventory</div>", unsafe_allow_html=True)
-    selected_category = st.multiselect("Select Category", options=[], default=[])
-    st.markdown("</div>", unsafe_allow_html=True)
-
+    
 # --------------------------- MAIN APP ---------------------------
 st.markdown("<h1>🌿 EcoStock AI</h1>", unsafe_allow_html=True)
 st.markdown("##### Smart Inventory Optimization for Retail")
