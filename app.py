@@ -168,6 +168,60 @@ st.markdown("### 📦 Inventory Overview")
 st.dataframe(filtered_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']],
              use_container_width=True, height=350)
 
+if "show_delete" not in st.session_state:
+    st.session_state.show_delete = False
+if "selected_delete_idx" not in st.session_state:
+    st.session_state.selected_delete_idx = None
+_, _, col_del = st.columns([8, 2, 1])
+with col_del:
+    # st.session_state.show_delete = st.button("🗑️", key="delete_button", help="Delete a product")
+    if st.button("🗑️", key="delete_button", help="Delete a product"):
+        st.session_state.show_delete = True  # Persist delete mode
+
+if st.session_state.show_delete:
+    st.markdown("### ❌ Delete Inventory Item")
+
+    # Create readable labels and safe index reference
+    filtered_df = filtered_df.reset_index(drop=True)
+    label_df = filtered_df.copy()
+    label_df['Label'] = label_df.apply(
+        lambda x: f"{x['Product']} ({x['Category']}) - {x['StoreID']} | Exp: {x['ExpiryDate'].date()}",
+        axis=1
+    )
+
+    # Show selectbox with index as key
+    st.session_state.selected_idx = st.selectbox(
+        "Select an item to delete:",
+        options=label_df.index,
+        format_func=lambda i: label_df.loc[i, 'Label']
+    )
+
+    if st.button("Confirm Delete"):
+        try:
+            full_df = pd.read_csv("mock_inventory.csv")
+            full_df['ExpiryDate'] = pd.to_datetime(full_df['ExpiryDate'])
+
+            row = filtered_df.loc[st.session_state.selected_idx]
+            exp = pd.to_datetime(row['ExpiryDate']).normalize()
+
+            condition = (
+                (full_df['Product'] == row['Product']) &
+                (full_df['Category'] == row['Category']) &
+                (full_df['StoreID'] == row['StoreID']) &
+                (full_df['ExpiryDate'].dt.normalize() == exp)
+            )
+
+            updated_df = full_df[~condition]
+            updated_df.to_csv("mock_inventory.csv", index=False)
+
+            st.success(f"✅ Deleted: {row['Product']} from store {row['StoreID']}")
+            st.session_state.show_delete = False
+            st.session_state.selected_delete_idx = None   
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"Error deleting entry: {e}")
+
 
 st.markdown("### 🚨 At-Risk Inventory")
 high_risk_items = at_risk[at_risk['RiskLevel'] == 'HIGH'].reset_index(drop=True)
