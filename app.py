@@ -7,6 +7,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 import plotly.express as px
+import os
 
 # --------------------------- PAGE CONFIG & STYLE ---------------------------
 st.set_page_config(page_title="EcoStock AI", layout="wide")
@@ -330,42 +331,106 @@ else:
     st.success("🎉 No high-risk items currently.")
 
 # --------------------------- SUGGESTIONS ---------------------------
-st.markdown("### ✅ Actionable Suggestions")
-if not at_risk.empty:
-    for i in range(0, len(at_risk), 3):
-        row_data = at_risk.iloc[i:i+3]
-        cols = st.columns(3)
-        for col, (_, row) in zip(cols, row_data.iterrows()):
-            risk_class = {
-                'HIGH': 'risk-high',
-                'MEDIUM': 'risk-medium',
-                'LOW': 'risk-low'
-            }.get(row['RiskLevel'], 'risk-low')
-            col.markdown(f"""
-                <div class='suggestion-card'>
-                    <div style='font-size: 18px; font-weight: bold;'>{row['Product']}</div>
-                    <div class='{risk_class}' style='margin-top: 4px;'>● {row['RiskLevel']} Risk</div>
-                    <div style='margin-top: 8px; font-size: 14px; line-height: 1.6'>
-                        <b>Category:</b> {row['Category']}<br>
-                        <b>Store:</b> {row['StoreID']}<br>
-                        <b>Demand:</b> {row['PredictedDemand']}<br>
-                        <b>Stock:</b> {row['StockQty']}<br>
-                        {f"<span style='color:#ff4d4d; font-weight:bold;'>EXPIRED</span><br>" if row['DaysToExpire'] <= 0 else f"<b>Expires in:</b> {row['DaysToExpire']} day(s)<br>"}
-                    </div>
-                   <div style='margin-top: 10px; color: #1abc9c; font-weight: 500; font-size: 13px;'>
-                    💡 Suggestion: {
-                    "🗑️ Discard expired product immediately!" if row['DaysToExpire'] <= 0 else
-                    "🔥 Act fast — apply aggressive discounting!" if row['RiskLevel'] == 'HIGH' else
-                    "🎯 Bundle or lightly promote to clear inventory." if row['RiskLevel'] == 'MEDIUM' else
-                    "✅ Inventory in good shape — no action needed."
-                    }
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+# st.markdown("### ✅ Actionable Suggestions")
+# if not at_risk.empty:
+#     for i in range(0, len(at_risk), 3):
+#         row_data = at_risk.iloc[i:i+3]
+#         cols = st.columns(3)
+#         for col, (_, row) in zip(cols, row_data.iterrows()):
+#             risk_class = {
+#                 'HIGH': 'risk-high',
+#                 'MEDIUM': 'risk-medium',
+#                 'LOW': 'risk-low'
+#             }.get(row['RiskLevel'], 'risk-low')
+#             col.markdown(f"""
+#                 <div class='suggestion-card'>
+#                     <div style='font-size: 18px; font-weight: bold;'>{row['Product']}</div>
+#                     <div class='{risk_class}' style='margin-top: 4px;'>● {row['RiskLevel']} Risk</div>
+#                     <div style='margin-top: 8px; font-size: 14px; line-height: 1.6'>
+#                         <b>Category:</b> {row['Category']}<br>
+#                         <b>Store:</b> {row['StoreID']}<br>
+#                         <b>Demand:</b> {row['PredictedDemand']}<br>
+#                         <b>Stock:</b> {row['StockQty']}<br>
+#                         {f"<span style='color:#ff4d4d; font-weight:bold;'>EXPIRED</span><br>" if row['DaysToExpire'] <= 0 else f"<b>Expires in:</b> {row['DaysToExpire']} day(s)<br>"}
+#                     </div>
+#                    <div style='margin-top: 10px; color: #1abc9c; font-weight: 500; font-size: 13px;'>
+#                     💡 Suggestion: {
+#                     "🗑️ Discard expired product immediately!" if row['DaysToExpire'] <= 0 else
+#                     "🔥 Act fast — apply aggressive discounting!" if row['RiskLevel'] == 'HIGH' else
+#                     "🎯 Bundle or lightly promote to clear inventory." if row['RiskLevel'] == 'MEDIUM' else
+#                     "✅ Inventory in good shape — no action needed."
+#                     }
+#                     </div>
+#                 </div>
+#             """, unsafe_allow_html=True)
+# else:
+#     st.info("No actionable suggestions to show.")
+
+# --------------------------- SMART ACTION CENTER ---------------------------
+st.markdown("### 🧠 Smart Action Center")
+
+# Filter expired items
+expired_df = df[df['DaysToExpire'] <= 0].reset_index(drop=True)
+
+if not expired_df.empty:
+    st.warning("⚠️ You have expired items in inventory.")
+    
+    # Show expired items
+    st.dataframe(expired_df[['Product', 'Category', 'StoreID', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire']], use_container_width=True)
+
+    # Allow download
+    csv_expired = expired_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="⬇️ Download Expired Items",
+        data=csv_expired,
+        file_name="expired_inventory.csv",
+        mime='text/csv',
+        key="expired_download"
+    )
+
+    # Discard button
+    if st.button("🗑️ Discard All Expired Items", key="discard_expired"):
+        try:
+            full_df = pd.read_csv("mock_inventory.csv")
+            full_df['ExpiryDate'] = pd.to_datetime(full_df['ExpiryDate'])
+
+            # Save backup
+            full_df.to_csv("mock_inventory_backup.csv", index=False)
+
+            # Remove expired rows
+            updated_df = full_df[(full_df['ExpiryDate'] - datetime.today()).dt.days > 0]
+            updated_df.to_csv("mock_inventory.csv", index=False)
+
+            st.success("✅ All expired items discarded successfully.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to discard expired items: {e}")
 else:
-    st.info("No actionable suggestions to show.")
+    st.success("🎉 No expired items detected!")
 
+# Undo discard
+if "mock_inventory_backup.csv" in os.listdir():
+    if st.button("↩️ Undo Last Discard", key="undo_expired"):
+        try:
+            backup_df = pd.read_csv("mock_inventory_backup.csv")
+            backup_df.to_csv("mock_inventory.csv", index=False)
+            st.success("✅ Undo successful — inventory restored.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to restore backup: {e}")
+# High-risk discount suggestion
+high_risk = at_risk[at_risk['RiskLevel'] == 'HIGH']
+if not high_risk.empty:
+    st.markdown("#### 🔥 High Risk: Discount Suggested")
+    st.write(high_risk[['Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
+    st.info("Consider discounting these products by **25–40%** to accelerate clearance.")
 
+# Medium-risk bundling
+medium_risk = at_risk[at_risk['RiskLevel'] == 'MEDIUM']
+if not medium_risk.empty:
+    st.markdown("#### ⚠️ Medium Risk: Bundling Recommended")
+    st.write(medium_risk[['Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
+    st.info("Consider offering **bundles or combo deals** to clear moderate risk inventory.")
 
 # --------------------------- FOOTER ---------------------------
 st.markdown("<div class='footer'>Built by <b>Ritika & Nikhil</b> for Walmart Sparkathon 2025 💡<br>GitHub: <a href='https://github.com/Nikhil020Yadav/EcoStock' style='color: #888;' target='_blank'>EcoStock</a></div>", unsafe_allow_html=True)
