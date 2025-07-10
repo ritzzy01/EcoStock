@@ -74,6 +74,7 @@ st.markdown("""
             padding-bottom: 1rem;
             margin-bottom: 1.2rem;
         }
+        
     </style>
 """, unsafe_allow_html=True)
 
@@ -111,6 +112,8 @@ def classify_risk(df):
     choices = ['HIGH','MEDIUM']
     df['RiskLevel'] = np.select(conditions, choices, default='LOW')
     return df
+
+
 
 
 # --------------------------- SIDEBAR ---------------------------
@@ -231,9 +234,23 @@ with col5:
     st.plotly_chart(risk_fig, use_container_width=True)
 
 # --------------------------- TABLES ---------------------------
+
+def format_days_to_expire(days):
+    if days <= 0:
+        return "<span style='color:#ff4d4d; font-weight:bold;'>EXPIRED</span>"
+    else:
+        return f"{days} day(s)"
+
+# Create a copy for rendering with HTML formatting
+display_df = filtered_df.copy()
+display_df['DaysToExpire'] = display_df['DaysToExpire'].apply(format_days_to_expire)
+
+# st.markdown("### 📦 Inventory Overview")
+# st.dataframe(filtered_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']],
+#              use_container_width=True, height=350)
 st.markdown("### 📦 Inventory Overview")
-st.dataframe(filtered_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']],
-             use_container_width=True, height=350)
+st.write(display_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
+
 
 if "show_delete" not in st.session_state:
     st.session_state.show_delete = False
@@ -302,8 +319,11 @@ if st.session_state.show_delete:
 
 st.markdown("### 🚨 At-Risk Inventory")
 high_risk_items = at_risk[at_risk['RiskLevel'] == 'HIGH'].reset_index(drop=True)
+high_risk_items_display = high_risk_items.copy()
+high_risk_items_display['DaysToExpire'] = high_risk_items_display['DaysToExpire'].apply(format_days_to_expire)
 if not high_risk_items.empty:
-    st.dataframe(high_risk_items[['Product', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']], use_container_width=True)
+    # st.dataframe(high_risk_items[['Product', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']], use_container_width=True)
+    st.write(high_risk_items_display[['Product', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
 else:
     st.success("🎉 No high-risk items currently.")
 
@@ -328,15 +348,17 @@ if not at_risk.empty:
                         <b>Store:</b> {row['StoreID']}<br>
                         <b>Demand:</b> {row['PredictedDemand']}<br>
                         <b>Stock:</b> {row['StockQty']}<br>
-                        <b>Expires in:</b> {row['DaysToExpire']} day(s)
+                        {f"<span style='color:#ff4d4d; font-weight:bold;'>EXPIRED</span><br>" if row['DaysToExpire'] <= 0 else f"<b>Expires in:</b> {row['DaysToExpire']} day(s)<br>"}
                     </div>
-                    <div style='margin-top: 10px; color: #1abc9c; font-weight: 500; font-size: 13px;'>
-                        💡 Suggestion: {
-                            "🔥 Act fast — apply aggressive discounting!" if row['RiskLevel'] == 'HIGH' else
-                            "🎯 Bundle or lightly promote to clear inventory." if row['RiskLevel'] == 'MEDIUM' else
-                            "✅ Inventory in good shape — no action needed."
-                        }
-                    </div>
+                   <div style='margin-top: 10px; color: #1abc9c; font-weight: 500; font-size: 13px;'>
+💡 Suggestion: {
+    "🗑️ Discard expired product immediately!" if row['DaysToExpire'] <= 0 else
+    "🔥 Act fast — apply aggressive discounting!" if row['RiskLevel'] == 'HIGH' else
+    "🎯 Bundle or lightly promote to clear inventory." if row['RiskLevel'] == 'MEDIUM' else
+    "✅ Inventory in good shape — no action needed."
+}
+</div>
+
                 </div>
             """, unsafe_allow_html=True)
 else:
