@@ -22,7 +22,7 @@ st.markdown("""
         h1, h2, h3 {
             color: #cccccc;
             margin-bottom: 0.3rem;
-            margin-top: 0.5 rem;
+            margin-top: 0.5rem;
         }
         .suggestion-card {
             background-color: #1a1a1a;
@@ -351,14 +351,13 @@ if not at_risk.empty:
                         {f"<span style='color:#ff4d4d; font-weight:bold;'>EXPIRED</span><br>" if row['DaysToExpire'] <= 0 else f"<b>Expires in:</b> {row['DaysToExpire']} day(s)<br>"}
                     </div>
                    <div style='margin-top: 10px; color: #1abc9c; font-weight: 500; font-size: 13px;'>
-💡 Suggestion: {
-    "🗑️ Discard expired product immediately!" if row['DaysToExpire'] <= 0 else
-    "🔥 Act fast — apply aggressive discounting!" if row['RiskLevel'] == 'HIGH' else
-    "🎯 Bundle or lightly promote to clear inventory." if row['RiskLevel'] == 'MEDIUM' else
-    "✅ Inventory in good shape — no action needed."
-}
-</div>
-
+                    💡 Suggestion: {
+                    "🗑️ Discard expired product immediately!" if row['DaysToExpire'] <= 0 else
+                    "🔥 Act fast — apply aggressive discounting!" if row['RiskLevel'] == 'HIGH' else
+                    "🎯 Bundle or lightly promote to clear inventory." if row['RiskLevel'] == 'MEDIUM' else
+                    "✅ Inventory in good shape — no action needed."
+                    }
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 else:
