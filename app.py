@@ -194,10 +194,6 @@ at_risk = at_risk.sort_values(by=['RiskLevel', 'DaysToExpire'])
 
 
 # --------------------------- KPIs ---------------------------
-# col1, col2, col3 = st.columns(3)
-# col1.markdown(f"<div class='metric-value'>📦 Total - {len(filtered_df)}</div>", unsafe_allow_html=True)
-# col2.markdown(f"<div class='metric-value'>⚠️ High Risk - {(filtered_df['RiskLevel'] == 'HIGH').sum()}</div>", unsafe_allow_html=True)
-# col3.markdown(f"<div class='metric-value'>🟡 Medium Risk - {(filtered_df['RiskLevel'] == 'MEDIUM').sum()}</div>", unsafe_allow_html=True)
 col1, col2, col3, col4 = st.columns(4)
 
 col1.markdown(f"<div class='metric-value'>📦 Total - {len(filtered_df)}</div>", unsafe_allow_html=True)
