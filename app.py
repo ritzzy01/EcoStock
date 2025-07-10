@@ -6,6 +6,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from xgboost import XGBRegressor
 import plotly.express as px
 import os
 
@@ -96,7 +97,10 @@ def train_model(df):
         transformers=[('cat', OneHotEncoder(handle_unknown='ignore'), ['Category', 'StoreID', 'Weather'])],
         remainder='passthrough'
     )
-    model = Pipeline(steps=[('preprocessor', preprocessor), ('regressor', LinearRegression())])
+    model = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('regressor', XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42))
+    ])
     model.fit(X, y)
     return model
 
@@ -239,8 +243,10 @@ with col5:
 # --------------------------- TABLES ---------------------------
 
 def format_days_to_expire(days):
-    if days <= 0:
+    if days < 0:
         return "<span style='color:#ff4d4d; font-weight:bold;'>EXPIRED</span>"
+    elif days == 0:
+        return "<span style='color:#ffa502; font-weight:bold;'>EXPIRING TODAY</span>"
     else:
         return f"{days} day(s)"
 
