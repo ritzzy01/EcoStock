@@ -438,7 +438,40 @@ if not medium_risk.empty:
     st.write(medium_risk[['Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
     st.info("Consider offering **bundles or combo deals** to clear moderate risk inventory.")
     
-    
+   # --------------------------- BUSINESS IMPACT ---------------------------
+st.markdown("### 💡 Business Impact Summary")
+
+# Assumed per-category unit prices
+price_map = {
+    "Dairy": 60, "Bakery": 40, "Beverages": 30,
+    "Fruits": 25, "Packaged": 50, "Snacks": 35, "Condiments": 20
+}
+
+# Add UnitPrice & EstimatedRevenue columns
+df['UnitPrice'] = df['Category'].map(price_map)
+df['EstimatedRevenue'] = df['PredictedDemand'] * df['UnitPrice']
+
+# Load backup of discarded expired items
+discarded_df = pd.read_csv("mock_inventory_backup.csv") if os.path.exists("mock_inventory_backup.csv") else pd.DataFrame()
+
+# Calculate total expired discarded items from backup
+if not discarded_df.empty:
+    discarded_df['ExpiryDate'] = pd.to_datetime(discarded_df['ExpiryDate'])
+    discarded_df['DaysToExpire'] = (discarded_df['ExpiryDate'] - datetime.today()).dt.days
+    expired_discarded = discarded_df[discarded_df['DaysToExpire'] <= 0]
+    expired_discarded['UnitPrice'] = expired_discarded['Category'].map(price_map)
+    wastage_value = (expired_discarded['StockQty'] * expired_discarded['UnitPrice']).sum()
+else:
+    wastage_value = 0
+
+# Current inventory potential revenue
+predicted_revenue = df['EstimatedRevenue'].sum()
+
+# Display metrics
+colA, colB = st.columns(2)
+colA.metric("🛡️ Estimated Wastage Avoided", f"₹{wastage_value:,.0f}")
+colB.metric("💰 Potential Revenue (Predicted)", f"₹{predicted_revenue:,.0f}")
+
 
 # --------------------------- FOOTER ---------------------------
 st.markdown("<div class='footer'>Built by <b>Ritika & Nikhil</b> for Walmart Sparkathon 2025 💡<br>GitHub: <a href='https://github.com/Nikhil020Yadav/EcoStock' style='color: #888;' target='_blank'>EcoStock</a></div>", unsafe_allow_html=True)
