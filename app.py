@@ -9,6 +9,73 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBRegressor
 import plotly.express as px
 import os
+import streamlit_authenticator as stauth
+
+
+names = ["Admin", "Staff"]
+usernames = ["admin", "staff"]
+passwords = ["admin123", "staff123"]  # You can hash later
+
+hashed_passwords = stauth.Hasher(passwords).generate()
+
+import streamlit_authenticator as stauth
+
+# Simulated user storage
+names = ["Admin", "Staff"]
+usernames = ["admin", "staff"]
+passwords = ["admin123", "staff123"]
+
+# Hash passwords
+hashed_passwords = stauth.Hasher(passwords).generate()
+
+# Allow user to register (simulation only — no file storage)
+# Registration block — shown only if NOT authenticated
+if "authentication_status" not in st.session_state or st.session_state.authentication_status is None:
+    with st.sidebar.expander("📝 Register (Simulated)"):
+        new_name = st.text_input("Name", key="reg_name")
+        new_username = st.text_input("Username", key="reg_user")
+        new_password = st.text_input("Password", type="password", key="reg_pass")
+        confirm_password = st.text_input("Confirm Password", type="password", key="reg_conf")
+
+        if st.button("Register Now"):
+            if new_password != confirm_password:
+                st.error("❌ Passwords do not match")
+            elif new_username in usernames:
+                st.error("❌ Username already exists")
+            elif not new_username or not new_password or not new_name:
+                st.warning("Please fill all fields")
+            else:
+                names.append(new_name)
+                usernames.append(new_username)
+                hashed_pw = stauth.Hasher([new_password]).generate()[0]
+                hashed_passwords.append(hashed_pw)
+                st.success("✅ Registered! Now login below 👇")
+                st.rerun()
+
+
+authenticator = stauth.Authenticate(
+    {"usernames": {
+        usernames[0]: {"name": names[0], "password": hashed_passwords[0]},
+        usernames[1]: {"name": names[1], "password": hashed_passwords[1]},
+    }},
+    "ecostock",  # Cookie name
+    "auth",      # Cookie key
+    cookie_expiry_days=1
+)
+name, authentication_status, username = authenticator.login("Login", "main")
+
+if authentication_status is False:
+    st.error("❌ Incorrect username or password")
+    st.stop()
+
+elif authentication_status is None:
+    st.warning("⚠️ Please enter your credentials")
+    st.stop()
+
+# ✅ Show app only if authenticated
+st.sidebar.success(f"Logged in as: {name}")
+authenticator.logout("Logout", "sidebar")
+
 
 # --------------------------- PAGE CONFIG & STYLE ---------------------------
 st.set_page_config(page_title="EcoStock AI", layout="wide")
