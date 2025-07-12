@@ -258,8 +258,8 @@ display_df['DaysToExpire'] = display_df['DaysToExpire'].apply(format_days_to_exp
 # st.dataframe(filtered_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']],
 #              use_container_width=True, height=350)
 st.markdown("### 📦 Inventory Overview")
-st.write(display_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
-
+# st.write(display_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
+st.write(display_df[['Product', 'Category', 'StockQty', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
 
 if "show_delete" not in st.session_state:
     st.session_state.show_delete = False
