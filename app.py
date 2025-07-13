@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBRegressor
 import plotly.express as px
 import os
+import re
 import streamlit_authenticator as stauth
 
 
@@ -17,8 +18,6 @@ usernames = ["admin", "staff"]
 passwords = ["admin123", "staff123"]  # You can hash later
 
 hashed_passwords = stauth.Hasher(passwords).generate()
-
-import streamlit_authenticator as stauth
 
 # Simulated user storage
 names = ["Admin", "Staff"]
@@ -230,7 +229,20 @@ with st.sidebar.expander("### ✍️ Add New Product"):
 
     if submitted:
         expiry_date_str = expiry_date.strftime('%Y-%m-%d')  
+        CSV_FILE="mock_inventory.csv"
+        try:
+            df_existing = pd.read_csv(CSV_FILE)
+        except FileNotFoundError:
+            df_existing = pd.DataFrame()
+        if "ID" in df_existing.columns and not df_existing.empty:
+            # Extract numeric parts from ProductIDs like "WM0017" → 17
+            numeric_ids = df_existing["ID"].apply(lambda x: int(re.search(r"\d+", str(x)).group()))
+            max_id = numeric_ids.max()
+            product_id = f"WM{max_id + 1:04d}"  # e.g., WM0020
+        else:
+            product_id = "WM0001"
         new_entry = {
+            "ID":product_id,
             "Product": product,
             "Category": category,
             "StockQty": stock_qty,
@@ -240,12 +252,9 @@ with st.sidebar.expander("### ✍️ Add New Product"):
             "Weather": weather,
             "HolidayFlag": holiday_flag
         }
-        CSV_FILE="mock_inventory.csv"
-        try:
-            df_existing = pd.read_csv(CSV_FILE)
-        except FileNotFoundError:
+        
+        if df_existing.empty:
             df_existing = pd.DataFrame(columns=new_entry.keys())
-
         # Append new row
         df_updated = pd.concat([df_existing, pd.DataFrame([new_entry])], ignore_index=True)
 
@@ -326,7 +335,7 @@ display_df['DaysToExpire'] = display_df['DaysToExpire'].apply(format_days_to_exp
 #              use_container_width=True, height=350)
 st.markdown("### 📦 Inventory Overview")
 # st.write(display_df[['Product', 'Category', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
-st.write(display_df[['Product', 'Category', 'StockQty', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
+st.write(display_df[['ID','Product', 'Category', 'StockQty', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
 
 if "show_delete" not in st.session_state:
     st.session_state.show_delete = False
@@ -399,7 +408,7 @@ high_risk_items_display = high_risk_items.copy()
 high_risk_items_display['DaysToExpire'] = high_risk_items_display['DaysToExpire'].apply(format_days_to_expire)
 if not high_risk_items.empty:
     # st.dataframe(high_risk_items[['Product', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']], use_container_width=True)
-    st.write(high_risk_items_display[['Product', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
+    st.write(high_risk_items_display[['ID','Product', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire', 'RiskLevel']].to_html(escape=False, index=False), unsafe_allow_html=True)
 else:
     st.success("🎉 No high-risk items currently.")
 
@@ -449,7 +458,7 @@ if not expired_df.empty:
     st.warning("⚠️ You have expired items in inventory.")
     
     # Show expired items
-    st.dataframe(expired_df[['Product', 'Category', 'StoreID', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire']], use_container_width=True)
+    st.dataframe(expired_df[['ID','Product', 'Category', 'StoreID', 'StockQty', 'WeeklySales', 'PredictedDemand', 'DaysToExpire']].reset_index(drop=True), use_container_width=True)
 
     # Allow download
     csv_expired = expired_df.to_csv(index=False).encode('utf-8')
@@ -495,17 +504,35 @@ if "mock_inventory_backup.csv" in os.listdir():
 high_risk = at_risk[at_risk['RiskLevel'] == 'HIGH']
 if not high_risk.empty:
     st.markdown("#### 🔥 High Risk: Discount Suggested")
-    st.write(high_risk[['Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
+    # st.write(high_risk[['ID','Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
+    # st.table(
+    #     high_risk[['ID', 'Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']].reset_index(drop=True)
+    # )
+    st.dataframe(
+        high_risk[['ID', 'Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']].reset_index(drop=True),
+        use_container_width=True
+    )
+
+
     st.info("Consider discounting these products by **25–40%** to accelerate clearance.")
 
 # Medium-risk bundling
 medium_risk = at_risk[at_risk['RiskLevel'] == 'MEDIUM']
 if not medium_risk.empty:
     st.markdown("#### ⚠️ Medium Risk: Bundling Recommended")
-    st.write(medium_risk[['Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
+    # st.write(medium_risk[['ID','Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']])
+    # st.table(
+    #     medium_risk[['ID', 'Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']].reset_index(drop=True)
+    # )
+    st.dataframe(
+        medium_risk[['ID', 'Product', 'Category', 'StoreID', 'PredictedDemand', 'StockQty']].reset_index(drop=True),
+        use_container_width=True
+    )
+
+
     st.info("Consider offering **bundles or combo deals** to clear moderate risk inventory.")
     
-   # --------------------------- BUSINESS IMPACT ---------------------------
+# --------------------------- BUSINESS IMPACT ---------------------------
 st.markdown("### 💡 Business Impact Summary")
 
 # Assumed per-category unit prices
@@ -542,5 +569,3 @@ colB.metric("💰 Potential Revenue (Predicted)", f"₹{predicted_revenue:,.0f}"
 
 # --------------------------- FOOTER ---------------------------
 st.markdown("<div class='footer'>Built by <b>Ritika & Nikhil</b> for Walmart Sparkathon 2025 💡<br>GitHub: <a href='https://github.com/Nikhil020Yadav/EcoStock' style='color: #888;' target='_blank'>EcoStock</a></div>", unsafe_allow_html=True)
-
-
