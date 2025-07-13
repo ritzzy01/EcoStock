@@ -496,10 +496,11 @@ if "mock_inventory_backup.csv" in os.listdir():
         try:
             backup_df = pd.read_csv("mock_inventory_backup.csv")
             backup_df.to_csv("mock_inventory.csv", index=False)
+            os.remove("mock_inventory_backup.csv")
             st.success("✅ Undo successful — inventory restored.")
             st.rerun()
         except Exception as e:
-            st.error(f"Failed to restore backup: {e}")
+            st.error(f" ❌ Failed to restore backup: {e}")
 # High-risk discount suggestion
 high_risk = at_risk[at_risk['RiskLevel'] == 'HIGH']
 if not high_risk.empty:
@@ -544,19 +545,22 @@ price_map = {
 # Add UnitPrice & EstimatedRevenue columns
 df['UnitPrice'] = df['Category'].map(price_map)
 df['EstimatedRevenue'] = df['PredictedDemand'] * df['UnitPrice']
+wastage_value = 0
 
-# Load backup of discarded expired items
-discarded_df = pd.read_csv("mock_inventory_backup.csv") if os.path.exists("mock_inventory_backup.csv") else pd.DataFrame()
-
-# Calculate total expired discarded items from backup
-if not discarded_df.empty:
-    discarded_df['ExpiryDate'] = pd.to_datetime(discarded_df['ExpiryDate'])
-    discarded_df['DaysToExpire'] = (discarded_df['ExpiryDate'] - datetime.today()).dt.days
-    expired_discarded = discarded_df[discarded_df['DaysToExpire'] <= 0]
-    expired_discarded['UnitPrice'] = expired_discarded['Category'].map(price_map)
-    wastage_value = (expired_discarded['StockQty'] * expired_discarded['UnitPrice']).sum()
-else:
-    wastage_value = 0
+# Check if backup file exists before processing
+backup_path = "mock_inventory_backup.csv"
+if os.path.exists(backup_path):
+    try:
+        discarded_df = pd.read_csv(backup_path)
+        if not discarded_df.empty:
+            discarded_df['ExpiryDate'] = pd.to_datetime(discarded_df['ExpiryDate'])
+            discarded_df['DaysToExpire'] = (discarded_df['ExpiryDate'] - datetime.today()).dt.days
+            expired_discarded = discarded_df[discarded_df['DaysToExpire'] <= 0]
+            expired_discarded['UnitPrice'] = expired_discarded['Category'].map(price_map)
+            wastage_value = (expired_discarded['StockQty'] * expired_discarded['UnitPrice']).sum()
+    except Exception as e:
+        st.warning(f"⚠️ Could not read backup file: {e}")
+        wastage_value = 0
 
 # Current inventory potential revenue
 predicted_revenue = df['EstimatedRevenue'].sum()
