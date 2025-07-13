@@ -101,7 +101,7 @@ hashed_passwords = stauth.Hasher(passwords).generate()
 # Allow user to register (simulation only — no file storage)
 # Registration block — shown only if NOT authenticated
 if "authentication_status" not in st.session_state or st.session_state.authentication_status is None:
-    with st.sidebar.expander("📝 Register (Simulated)"):
+    with st.sidebar.expander("📝 Register"):
         new_name = st.text_input("Name", key="reg_name")
         new_username = st.text_input("Username", key="reg_user")
         new_password = st.text_input("Password", type="password", key="reg_pass")
